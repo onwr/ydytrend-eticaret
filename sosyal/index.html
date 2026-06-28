@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="Mobil Tedarik — Instagram, TikTok, mağazalarımız ve iletişim bağlantıları."
+    />
+    <meta name="theme-color" content="#0f172a" />
+    <meta property="og:title" content="Mobil Tedarik | Bağlantılar" />
+    <meta
+      property="og:description"
+      content="Instagram, TikTok, pazaryeri mağazalarımız ve WhatsApp iletişim."
+    />
+    <meta property="og:image" content="https://mobiltedarik.com/logo.png" />
+    <title>Mobil Tedarik | Bağlantılar</title>
+    <link rel="icon" href="https://mobiltedarik.com/logo.png" type="image/png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                DEFAULT: "#38bdf8",
+                dark: "#0ea5e9",
+                navy: "#0f172a",
+                muted: "#64748b",
+                surface: "#1e293b",
+              },
+            },
+            fontFamily: {
+              sans: ["Poppins", "system-ui", "sans-serif"],
+            },
+            boxShadow: {
+              glow: "0 0 40px rgba(56, 189, 248, 0.15)",
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      html {
+        -webkit-tap-highlight-color: transparent;
+      }
+      body {
+        min-height: 100dvh;
+      }
+    </style>
+  </head>
+  <body class="bg-brand-navy font-sans text-white antialiased">
+    <div id="root"></div>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

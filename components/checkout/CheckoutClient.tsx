@@ -1,0 +1,481 @@
+﻿"use client"
+
+import { useState, useEffect, useRef } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { useRouter } from "next/navigation"
+import { FaUser, FaTruck, FaUniversity, FaCheck, FaChevronRight, FaChevronLeft, FaTicketAlt, FaTimes } from "react-icons/fa"
+import Image from "next/image"
+import { formatCurrency } from "@/lib/cart"
+import type { TurkeyLocation } from "@/lib/turkiyeLocations"
+import type { ActiveCoupon, CheckoutCart, SavedAddress, SelectOption } from "@/types/checkout"
+import { dispatchCartUpdated } from "@/lib/cartEvents"
+import { trackAnalyticsEventSafe, cartLinesToAnalyticsItems } from "@/lib/analytics/trackSafe"
+import { calculatePriceSummary } from "@/lib/checkoutTotals"
+import { BankTransferInfo } from "@/components/checkout/BankTransferInfo"
+
+const steps = [
+  { id: 1, title: "İletişim", icon: <FaUser /> },
+  { id: 2, title: "Adres", icon: <FaTruck /> },
+  { id: 3, title: "Ödeme", icon: <FaUniversity /> }
+]
+
+export default function CheckoutClient() {
+  const router = useRouter()
+  const [currentStep, setCurrentStep] = useState(1)
+  const beginCheckoutTracked = useRef(false)
+  const [loading, setLoading] = useState(false)
+  const [cart, setCart] = useState<CheckoutCart | null>(null)
+  const [cities, setCities] = useState<TurkeyLocation[]>([])
+  const [districts, setDistricts] = useState<TurkeyLocation[]>([])
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([])
+  const [storeSettings, setStoreSettings] = useState({ threshold: 750, cost: 49.9 })
+
+  // Coupon States
+  const [couponCode, setCouponCode] = useState("")
+  const [activeCoupon, setActiveCoupon] = useState<ActiveCoupon | null>(null)
+  const [couponError, setCouponError] = useState("")
+  const [couponLoading, setCouponLoading] = useState(false)
+
+  const [form, setForm] = useState({
+    email: "",
+    phone: "",
+    fullName: "",
+    city: "",
+    district: "",
+    address: "",
+    postalCode: "",
+    note: ""
+  })
+
+  // Veri yükleme ve API işlemleri (İl/İlçe)
+  useEffect(() => {
+    fetch("/api/cart").then(r => r.json()).then(d => {
+      setCart(d)
+      if (d.settings) setStoreSettings(d.settings)
+      if (d.lines?.length && !beginCheckoutTracked.current) {
+        beginCheckoutTracked.current = true
+        trackAnalyticsEventSafe("begin_checkout", {
+          currency: "TRY",
+          value: d.summary?.grandTotal,
+          items: cartLinesToAnalyticsItems(
+            d.lines.map((l: { productId: number; productName: string; unitPrice: number; quantity: number }) => ({
+              productId: l.productId,
+              name: l.productName,
+              unitPrice: l.unitPrice,
+              quantity: l.quantity,
+            }))
+          ),
+        })
+      }
+    })
+    fetch("/api/locations/provinces")
+      .then((r) => r.json())
+      .then((d) => {
+        if (Array.isArray(d.items)) setCities(d.items)
+      })
+      .catch(() => {})
+    
+    fetch("/api/auth/me").then(r => r.json()).then(d => {
+      if (d.user) {
+        setForm(prev => ({ 
+          ...prev, 
+          email: d.user.email || "",
+          phone: d.user.phone || ""
+        }))
+        // Fetch saved addresses if logged in
+        fetch("/api/addresses").then(r => r.json()).then(addrData => {
+           if (addrData.addresses) setSavedAddresses(addrData.addresses)
+        })
+      }
+    })
+  }, [])
+
+  useEffect(() => {
+    const selected = cities.find(c => c.name === form.city)
+    if (selected) {
+      let cancelled = false
+      fetch(`/api/locations/provinces/${selected.id}/districts`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (!cancelled && Array.isArray(d.items)) setDistricts(d.items)
+        })
+        .catch(() => {
+          if (!cancelled) setDistricts([])
+        })
+      return () => {
+        cancelled = true
+      }
+    }
+
+    let cancelled = false
+    void Promise.resolve().then(() => {
+      if (!cancelled) setDistricts([])
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [form.city, cities])
+
+  const update = (k: string, v: string) => setForm(prev => ({ ...prev, [k]: v }))
+
+  const applySavedAddress = (addr: SavedAddress) => {
+    setForm(prev => ({
+      ...prev,
+      fullName: addr.fullName,
+      city: addr.city,
+      district: addr.district,
+      address: addr.line1 + (addr.line2 ? ` ${addr.line2}` : "")
+    }))
+  }
+
+  const applyCoupon = async () => {
+    if (!couponCode) return
+    if (!cart) return
+    setCouponLoading(true)
+    setCouponError("")
+    try {
+      const res = await fetch("/api/checkout/coupon", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: couponCode, subtotal: cart.summary.subtotal })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setActiveCoupon(data)
+        setCouponCode("")
+      } else {
+        setCouponError(data.message)
+      }
+    } catch {
+      setCouponError("Kupon uygulanırken bir hata oluştu.")
+    } finally {
+      setCouponLoading(false)
+    }
+  }
+
+  const removeCoupon = () => {
+    setActiveCoupon(null)
+  }
+
+  const next = () => {
+    setCurrentStep((prev) => {
+      const nextStep = Math.min(prev + 1, 3)
+      if (prev === 2 && nextStep === 3 && cart) {
+        trackAnalyticsEventSafe("add_shipping_info", {
+          currency: "TRY",
+          value: cart.summary.grandTotal,
+          items: cartLinesToAnalyticsItems(
+            cart.lines.map((l) => ({
+              productId: l.productId,
+              name: l.productName,
+              unitPrice: l.unitPrice,
+              quantity: l.quantity,
+            }))
+          ),
+        })
+      }
+      return nextStep
+    })
+  }
+  const back = () => setCurrentStep(prev => Math.max(prev - 1, 1))
+
+  const isStepValid = () => {
+    if (currentStep === 1) return form.email.includes("@") && form.phone.length >= 10
+    if (currentStep === 2) return form.fullName && form.city && form.district && form.address
+    return true
+  }
+
+  const handleFinalSubmit = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          guestEmail: form.email,
+          guestPhone: form.phone,
+          shippingFullName: form.fullName,
+          shippingPhone: form.phone,
+          shippingLine1: form.address,
+          shippingDistrict: form.district,
+          shippingCity: form.city,
+          shippingPostalCode: form.postalCode || "34000",
+          shippingCountry: "TR",
+          billingSameAsShipping: true,
+          paymentMethod: "BANK_TRANSFER",
+          note: form.note,
+          couponCode: activeCoupon?.code
+        })
+      })
+      const json = await res.json()
+      if (res.ok) {
+        dispatchCartUpdated()
+        router.push(`/checkout/havale?orderNo=${encodeURIComponent(json.orderNo)}`)
+      } else {
+        const errorMsg = json.debug ? `${json.message} (${json.debug})` : (json.message || "Bir hata oluştu")
+        alert(errorMsg)
+      }
+    } catch (err) {
+      alert("Hata oluştu")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (!cart) return <div className="p-20 text-center">Yükleniyor...</div>
+
+  // Dinamik Fiyat Hesaplama
+  const totals = calculatePriceSummary(
+    cart.summary.subtotal, 
+    activeCoupon?.discount || 0,
+    storeSettings.threshold,
+    storeSettings.cost
+  )
+
+  return (
+    <div className="mx-auto max-w-5xl px-4 py-10">
+      {/* STEPPER HEADER */}
+      <div className="mb-12 flex items-center justify-center space-x-4 md:space-x-12">
+        {steps.map((s) => (
+          <div key={s.id} className="flex items-center space-x-2">
+            <div className={`flex h-10 w-10 items-center justify-center rounded-full text-sm transition-all duration-500 
+              ${currentStep >= s.id ? "bg-brand-gold text-white" : "bg-zinc-100 text-zinc-400"}`}>
+              {currentStep > s.id ? <FaCheck /> : s.icon}
+            </div>
+            <span className={`hidden text-xs font-bold uppercase tracking-widest md:block 
+              ${currentStep >= s.id ? "text-zinc-900" : "text-zinc-400"}`}>{s.title}</span>
+            {s.id !== 3 && <div className="h-px w-8 bg-zinc-200 md:w-16" />}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_380px]">
+        {/* LEFT SIDE: MULTI-STEP FORM */}
+        <div className="min-h-[400px]">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentStep}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-6"
+            >
+              {currentStep === 1 && (
+                <div className="space-y-4">
+                  <h2 className="text-xl font-black uppercase italic text-zinc-800">İletişim Bilgileri</h2>
+                  <Input label="E-Posta" value={form.email} onChange={(v: string) => update("email", v)} placeholder="ornek@mail.com" />
+                  <Input label="Telefon" value={form.phone} onChange={(v: string) => update("phone", v)} placeholder="05XX XXX XX XX" />
+                </div>
+              )}
+
+              {currentStep === 2 && (
+                <div className="space-y-6">
+                  <h2 className="text-xl font-black uppercase italic text-zinc-800">Teslimat Adresi</h2>
+                  
+                  {/* SAVED ADDRESSES */}
+                  {savedAddresses.length > 0 && (
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">Kayıtlı Adreslerim</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {savedAddresses.map((addr) => (
+                          <button
+                            key={addr.id}
+                            type="button"
+                            onClick={() => applySavedAddress(addr)}
+                            className="flex flex-col items-start rounded-2xl border-2 border-zinc-100 p-4 text-left transition-all hover:border-brand-gold hover:bg-brand-page/30"
+                          >
+                            <span className="text-[10px] font-black uppercase tracking-widest text-brand-gold mb-1">{addr.title}</span>
+                            <p className="text-xs font-bold text-zinc-900">{addr.fullName}</p>
+                            <p className="mt-1 text-[10px] text-zinc-400 line-clamp-1">{addr.district}, {addr.city}</p>
+                          </button>
+                        ))}
+                      </div>
+                      <div className="relative flex items-center py-4">
+                        <div className="grow border-t border-zinc-100"></div>
+                        <span className="mx-4 shrink text-[10px] font-black uppercase tracking-widest text-zinc-300">VEYA MANUEL GİRİŞ</span>
+                        <div className="grow border-t border-zinc-100"></div>
+                      </div>
+                    </div>
+                  )}
+
+                  <Input label="Ad Soyad" value={form.fullName} onChange={(v: string) => update("fullName", v)} />
+                  <div className="grid grid-cols-2 gap-4">
+                    <Select label="İl" value={form.city} options={cities} onChange={(v: string) => update("city", v)} />
+                    <Select label="İlçe" value={form.district} options={districts} onChange={(v: string) => update("district", v)} disabled={!form.city} />
+                  </div>
+                  <Input label="Posta Kodu" value={form.postalCode} onChange={(v: string) => update("postalCode", v)} placeholder="34000" />
+                  <textarea
+                    placeholder="Mahalle, Sokak, No, Daire..."
+                    className="w-full rounded-xl border border-zinc-200 p-4 text-sm font-bold outline-none focus:border-brand-gold transition-all"
+                    rows={3}
+                    value={form.address}
+                    onChange={e => update("address", e.target.value)}
+                  />
+                </div>
+              )}
+
+              {currentStep === 3 && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-xl font-black uppercase italic text-zinc-800">Havale / EFT</h2>
+                    <p className="mt-1 text-sm text-zinc-500">
+                      Siparişi onayladıktan sonra banka bilgileri ve dekont yükleme ekranına yönlendirileceksiniz.
+                    </p>
+                  </div>
+
+                  <BankTransferInfo amountLabel={formatCurrency(totals.grandTotal)} />
+
+                  <div className="space-y-2 text-left">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
+                      SİPARİŞ NOTU (OPSİYONEL)
+                    </label>
+                    <textarea
+                      placeholder="Siparişinize dair bir notunuz var mı?"
+                      className="w-full rounded-2xl border-2 border-zinc-100 bg-white p-5 text-sm font-bold outline-none focus:border-brand-teal transition-all"
+                      rows={4}
+                      value={form.note}
+                      onChange={(e) => update("note", e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
+
+          {/* NAVIGATION BUTTONS */}
+          <div className="mt-10 flex items-center justify-between border-t border-zinc-100 pt-6">
+            <button
+              onClick={back}
+              disabled={currentStep === 1}
+              className="flex items-center space-x-2 text-sm font-bold uppercase tracking-widest text-zinc-400 hover:text-zinc-800 disabled:opacity-0"
+            >
+              <FaChevronLeft /> <span>Geri</span>
+            </button>
+            {currentStep < 3 ? (
+              <button
+                onClick={next}
+                disabled={!isStepValid()}
+                className="flex items-center space-x-3 rounded-full bg-brand-gold px-8 py-4 text-xs font-black uppercase tracking-[0.2em] text-white shadow-lg disabled:opacity-40 transition-all hover:scale-105 active:scale-95"
+              >
+                <span>Devam Et</span> <FaChevronRight />
+              </button>
+            ) : (
+              <button
+                onClick={handleFinalSubmit}
+                disabled={loading}
+                className="flex items-center space-x-3 rounded-full bg-zinc-900 px-10 py-4 text-xs font-black uppercase tracking-[0.2em] text-white shadow-lg hover:bg-brand-gold transition-all hover:scale-105 active:scale-95"
+              >
+                <span>{loading ? "Tamamlanıyor..." : "Siparişi Onayla"}</span> <FaCheck />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* RIGHT SIDE: SUMMARY CART (Mini) */}
+        <aside className="h-fit rounded-[2.5rem] border border-zinc-100 bg-zinc-50/50 p-8 shadow-sm">
+          <h3 className="mb-6 text-sm font-black uppercase tracking-widest text-zinc-900">Sipariş Özeti</h3>
+          <div className="mb-8 space-y-4 border-b border-zinc-200 pb-8 max-h-[250px] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {cart.lines.map((l) => (
+              <div key={l.itemId} className="flex justify-between text-xs">
+                <span className="text-zinc-500 line-clamp-1">{l.quantity}x {l.productName}</span>
+                <span className="font-bold shrink-0 ml-4">{formatCurrency(l.lineTotal)}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* COUPON SECTION */}
+          <div className="mb-8 space-y-3">
+            <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 ml-1">İNDİRİM KUPONU</p>
+            {activeCoupon ? (
+              <div className="flex items-center justify-between rounded-2xl bg-brand-gold/10 px-4 py-3 border border-brand-gold/20">
+                <div className="flex items-center gap-2">
+                  <FaTicketAlt className="text-brand-gold h-3 w-3" />
+                  <span className="text-xs font-black text-brand-gold uppercase">{activeCoupon.code}</span>
+                </div>
+                <button onClick={removeCoupon} className="text-zinc-400 hover:text-zinc-600 transition-colors">
+                  <FaTimes className="h-3 w-3" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input 
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                  placeholder="KODU GİRİN"
+                  className="h-11 flex-1 rounded-xl border border-zinc-200 bg-white px-4 text-[10px] font-black uppercase outline-none focus:border-brand-gold"
+                />
+                <button 
+                  onClick={applyCoupon}
+                  disabled={couponLoading || !couponCode}
+                  className="h-11 rounded-xl bg-zinc-900 px-4 text-[10px] font-black uppercase text-white transition-all hover:bg-brand-gold disabled:opacity-40"
+                >
+                  {couponLoading ? "..." : "UYGULA"}
+                </button>
+              </div>
+            )}
+            {couponError && <p className="text-[9px] font-bold text-rose-500 ml-1 uppercase">{couponError}</p>}
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex justify-between text-xs">
+              <span className="text-zinc-400 uppercase tracking-widest text-[9px]">Ara Toplam</span>
+              <span className="font-bold">{formatCurrency(totals.subtotal)}</span>
+            </div>
+            
+            <div className="flex justify-between text-xs">
+              <span className="text-zinc-400 uppercase tracking-widest text-[9px]">Kargo</span>
+              <span className={`font-bold ${totals.shipping === 0 ? "text-brand-gold" : ""}`}>
+                {totals.shipping === 0 ? "BEDAVA" : formatCurrency(totals.shipping)}
+              </span>
+            </div>
+
+            {totals.discount > 0 && (
+              <div className="flex justify-between text-xs text-brand-gold">
+                <span className="uppercase tracking-widest text-[9px]">İndirim</span>
+                <span className="font-bold">-{formatCurrency(totals.discount)}</span>
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-between border-t-2 border-dashed border-zinc-200 pt-6">
+              <span className="text-xs font-black uppercase tracking-widest">Toplam</span>
+              <span className="text-2xl font-black text-brand-gold tracking-tighter">{formatCurrency(totals.grandTotal)}</span>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  )
+}
+
+// --- Küçük UI Bileşenleri ---
+
+function Input({ label, value, onChange, placeholder }: { label: string, value: string, onChange: (v: string) => void, placeholder?: string }) {
+  return (
+    <div className="flex flex-col space-y-1">
+      <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">{label}</label>
+      <input
+        className="h-14 rounded-xl border border-zinc-200 bg-white px-4 text-sm font-bold outline-none focus:border-brand-gold transition-all"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+      />
+    </div>
+  )
+}
+
+function Select({ label, value, options, onChange, disabled }: { label: string, value: string, options: SelectOption[], onChange: (v: string) => void, disabled?: boolean }) {
+  return (
+    <div className="flex flex-col space-y-1">
+      <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">{label}</label>
+      <select
+        disabled={disabled}
+        className="h-14 rounded-xl border border-zinc-200 bg-white px-4 text-sm font-bold outline-none focus:border-brand-gold disabled:bg-zinc-50 transition-all"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+      >
+        <option value="">Seçiniz</option>
+        {options?.map((o) => <option key={o.id} value={o.name}>{o.name}</option>)}
+      </select>
+    </div>
+  )
+}

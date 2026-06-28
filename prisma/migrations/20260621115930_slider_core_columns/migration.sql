@@ -1,0 +1,38 @@
+-- Fresh install: Slider stub tablosuna çekirdek sütunlar (littlemomstore'da zaten varsa atla)
+SET @db := DATABASE();
+
+SET @c := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=@db AND TABLE_NAME='Slider' AND COLUMN_NAME='title');
+SET @sql := IF(@c=0, 'ALTER TABLE `Slider` ADD COLUMN `title` VARCHAR(191) NULL AFTER `id`', 'SELECT 1');
+PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
+
+SET @c := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=@db AND TABLE_NAME='Slider' AND COLUMN_NAME='subtitle');
+SET @sql := IF(@c=0, 'ALTER TABLE `Slider` ADD COLUMN `subtitle` VARCHAR(191) NULL AFTER `title`', 'SELECT 1');
+PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
+
+SET @c := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=@db AND TABLE_NAME='Slider' AND COLUMN_NAME='imageUrl');
+SET @sql := IF(@c=0, 'ALTER TABLE `Slider` ADD COLUMN `imageUrl` VARCHAR(500) NOT NULL DEFAULT '''' AFTER `subtitle`', 'SELECT 1');
+PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
+
+SET @c := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=@db AND TABLE_NAME='Slider' AND COLUMN_NAME='linkUrl');
+SET @sql := IF(@c=0, 'ALTER TABLE `Slider` ADD COLUMN `linkUrl` VARCHAR(500) NULL AFTER `imageUrl`', 'SELECT 1');
+PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
+
+SET @c := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=@db AND TABLE_NAME='Slider' AND COLUMN_NAME='buttonText');
+SET @sql := IF(@c=0, 'ALTER TABLE `Slider` ADD COLUMN `buttonText` VARCHAR(191) NULL DEFAULT ''İncele'' AFTER `linkUrl`', 'SELECT 1');
+PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
+
+SET @c := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=@db AND TABLE_NAME='Slider' AND COLUMN_NAME='sortOrder');
+SET @sql := IF(@c=0, 'ALTER TABLE `Slider` ADD COLUMN `sortOrder` INTEGER NOT NULL DEFAULT 0 AFTER `buttonText`', 'SELECT 1');
+PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
+
+SET @c := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=@db AND TABLE_NAME='Slider' AND COLUMN_NAME='isActive');
+SET @sql := IF(@c=0, 'ALTER TABLE `Slider` ADD COLUMN `isActive` BOOLEAN NOT NULL DEFAULT true AFTER `sortOrder`', 'SELECT 1');
+PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
+
+SET @c := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=@db AND TABLE_NAME='Slider' AND COLUMN_NAME='createdAt');
+SET @sql := IF(@c=0, 'ALTER TABLE `Slider` ADD COLUMN `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) AFTER `isActive`', 'SELECT 1');
+PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
+
+SET @c := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=@db AND TABLE_NAME='Slider' AND COLUMN_NAME='updatedAt');
+SET @sql := IF(@c=0, 'ALTER TABLE `Slider` ADD COLUMN `updatedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) AFTER `createdAt`', 'SELECT 1');
+PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;

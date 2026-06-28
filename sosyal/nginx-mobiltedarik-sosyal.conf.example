@@ -1,0 +1,16 @@
+# /etc/nginx/sites-available/mobiltedarik-sosyal
+# Örnek: sosyal.mobiltedarik.com için statik link sayfası
+# certbot --nginx -d sosyal.mobiltedarik.com
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name sosyal.mobiltedarik.com;
+
+    root /var/www/mobiltedarik-sosyal;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
