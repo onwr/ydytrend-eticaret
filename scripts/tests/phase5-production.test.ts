@@ -38,6 +38,24 @@ test("CSRF origin validation", () => {
   assert.equal(bad.ok, false)
 })
 
+test("CSRF allows localhost origin in development when SITE_URL is production", () => {
+  process.env.NODE_ENV = "development"
+  process.env.DATABASE_URL = "mysql://u:p@127.0.0.1:3306/test"
+  process.env.NEXT_PUBLIC_SITE_URL = "https://ydytrend.com"
+  resetEnvCacheForTests()
+  const ok = validateApiOrigin(
+    new Request("http://localhost:3000/api/admin/navigation/announcements", {
+      method: "PUT",
+      headers: {
+        origin: "http://localhost:3000",
+        "content-type": "application/json",
+      },
+    })
+  )
+  assert.equal(ok.ok, true)
+  resetEnvCacheForTests()
+})
+
 test("rate limit sync bucket", () => {
   const key = `test:${Date.now()}`
   assert.equal(consumeRateLimitSync(key, 2, 60_000).allowed, true)

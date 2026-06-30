@@ -1,5 +1,7 @@
 export const HEADER_ANNOUNCEMENTS_KEY = "HEADER_ANNOUNCEMENTS"
 
+export const ANNOUNCEMENTS_UPDATED_EVENT = "ydy-announcements-updated"
+
 export const DEFAULT_HEADER_ANNOUNCEMENTS = [
   "500 TL Üzeri Kargo Ücretsiz",
   "Aynı Gün Kargo Seçeneği",

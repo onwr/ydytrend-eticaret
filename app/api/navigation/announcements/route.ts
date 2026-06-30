@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import {
+  DEFAULT_HEADER_ANNOUNCEMENTS,
   HEADER_ANNOUNCEMENTS_KEY,
   normalizeAnnouncements,
 } from "@/lib/headerAnnouncements"
+
+export const dynamic = "force-dynamic"
+export const revalidate = 0
 
 export async function GET() {
   try {
@@ -12,11 +16,15 @@ export async function GET() {
       select: { value: true },
     })
 
-    if (!row?.value) return NextResponse.json({ items: [] })
+    if (!row?.value) {
+      return NextResponse.json({ items: DEFAULT_HEADER_ANNOUNCEMENTS })
+    }
 
     const parsed = normalizeAnnouncements(JSON.parse(row.value))
-    return NextResponse.json({ items: parsed })
+    return NextResponse.json({
+      items: parsed.length > 0 ? parsed : DEFAULT_HEADER_ANNOUNCEMENTS,
+    })
   } catch {
-    return NextResponse.json({ items: [] })
+    return NextResponse.json({ items: DEFAULT_HEADER_ANNOUNCEMENTS })
   }
 }

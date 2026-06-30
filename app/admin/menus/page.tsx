@@ -14,7 +14,7 @@ import {
   FaSync,
 } from "react-icons/fa"
 import { AnimatePresence, motion, Reorder } from "framer-motion"
-import { DEFAULT_HEADER_ANNOUNCEMENTS } from "@/lib/headerAnnouncements"
+import { DEFAULT_HEADER_ANNOUNCEMENTS, ANNOUNCEMENTS_UPDATED_EVENT } from "@/lib/headerAnnouncements"
 
 type NavChild = {
   label: string
@@ -99,11 +99,16 @@ export default function AdminMenusPage() {
 
   const loadAnnouncements = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/navigation/announcements")
+      const res = await fetch("/api/admin/navigation/announcements", {
+        cache: "no-store",
+        credentials: "same-origin",
+      })
       if (!res.ok) throw new Error("fetch")
       const data = await res.json()
       const items = Array.isArray(data?.items) ? data.items : []
-      if (items.length > 0) setAnnouncements(items)
+      setAnnouncements(
+        items.length > 0 ? items.map((v: unknown) => String(v)) : DEFAULT_HEADER_ANNOUNCEMENTS
+      )
     } catch {
       pushToast("Duyurular yüklenemedi.", false)
     }
@@ -132,6 +137,7 @@ export default function AdminMenusPage() {
       const res = await fetch("/api/admin/navigation/announcements", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({ items: cleaned }),
       })
       const data = await res.json().catch(() => ({}))
@@ -139,8 +145,13 @@ export default function AdminMenusPage() {
         pushToast(data?.message || "Duyurular kaydedilemedi.", false)
         return
       }
-      setAnnouncements(cleaned)
+      const saved = Array.isArray(data?.items)
+        ? data.items.map((v: unknown) => String(v))
+        : cleaned
+      setAnnouncements(saved)
+      window.dispatchEvent(new Event(ANNOUNCEMENTS_UPDATED_EVENT))
       pushToast("Duyuru barı güncellendi.", true)
+      await loadAnnouncements()
     } catch {
       pushToast("Duyuru kaydetme hatası.", false)
     } finally {

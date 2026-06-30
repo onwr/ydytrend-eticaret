@@ -7,6 +7,22 @@ const CSRF_EXEMPT_PREFIXES = [
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"])
 
+const LOCAL_DEV_HOSTS = new Set(["localhost", "127.0.0.1"])
+
+function isLocalDevOrigin(origin: string): boolean {
+  try {
+    const u = new URL(origin)
+    return LOCAL_DEV_HOSTS.has(u.hostname)
+  } catch {
+    return false
+  }
+}
+
+function originAllowed(origin: string, allowedOrigin: string, allowLocalDev: boolean): boolean {
+  if (origin === allowedOrigin) return true
+  return allowLocalDev && isLocalDevOrigin(origin)
+}
+
 export function isCsrfExemptPath(pathname: string): boolean {
   return CSRF_EXEMPT_PREFIXES.some(
     (p) => pathname === p || pathname.startsWith(p + "/")
@@ -27,10 +43,11 @@ export function requiresCsrfCheck(method: string, pathname: string): boolean {
 export function validateApiOrigin(request: Request): { ok: true } | { ok: false; reason: string } {
   const env = getEnv()
   const allowedOrigin = new URL(env.siteUrl).origin
+  const allowLocalDev = env.isDevelopment || env.isTest
 
   const origin = request.headers.get("origin")?.trim()
   if (origin) {
-    if (origin === allowedOrigin) return { ok: true }
+    if (originAllowed(origin, allowedOrigin, allowLocalDev)) return { ok: true }
     return { ok: false, reason: "Origin eşleşmiyor." }
   }
 
@@ -38,7 +55,7 @@ export function validateApiOrigin(request: Request): { ok: true } | { ok: false;
   if (referer) {
     try {
       const refOrigin = new URL(referer).origin
-      if (refOrigin === allowedOrigin) return { ok: true }
+      if (originAllowed(refOrigin, allowedOrigin, allowLocalDev)) return { ok: true }
     } catch {
       return { ok: false, reason: "Geçersiz Referer." }
     }
