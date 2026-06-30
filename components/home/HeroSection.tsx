@@ -222,7 +222,7 @@ export function HeroSection({ slides = [] }: { slides?: HeroSlideContent[] }) {
       className="relative overflow-hidden rounded-2xl md:rounded-3xl"
       style={{ background: "var(--brand-gradient)" }}
     >
-      <div className="mx-auto grid max-w-[1440px] gap-8 px-4 py-8 md:grid-cols-2 md:items-center md:gap-10 md:px-8 md:py-12 lg:px-10 lg:py-14">
+      <div className="mx-auto grid max-w-[1440px] gap-6 px-4 py-6 md:grid-cols-2 md:items-center md:gap-8 md:px-8 md:py-8 lg:px-10 lg:py-10">
         <div className="relative z-10 text-white">
           <AnimatePresence mode="wait">
             <motion.div

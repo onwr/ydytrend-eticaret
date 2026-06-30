@@ -187,7 +187,7 @@ export function HomeProductsSection({
   if (!products || products.length === 0) return null
 
   return (
-    <section className="py-6 md:py-8">
+    <section className="py-4 md:py-5">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         whileInView={{ opacity: 1, y: 0 }}

@@ -41,7 +41,7 @@ export function PopularCategories({ categories }: { categories: HomeCategoryItem
   const featured = pickFeatured(categories)
 
   return (
-    <section className="py-8 md:py-12">
+    <section className="py-5 md:py-7">
       <div className="mb-6 flex items-end justify-between gap-4 md:mb-8">
         <div>
           <h2 className="font-display text-xl font-semibold text-brand-navy md:text-2xl">

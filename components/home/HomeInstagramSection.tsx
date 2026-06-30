@@ -6,7 +6,7 @@ import { BRAND_INSTAGRAM, BRAND_NAME } from "@/lib/brand"
 
 export function HomeInstagramSection() {
   return (
-    <section className="py-10 md:py-14">
+    <section className="py-6 md:py-8">
       <div className="overflow-hidden rounded-2xl border border-brand-border bg-gradient-to-br from-brand-blush-soft via-white to-brand-page p-8 text-center md:p-12">
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-navy text-white">
           <FaInstagram className="h-7 w-7" aria-hidden />

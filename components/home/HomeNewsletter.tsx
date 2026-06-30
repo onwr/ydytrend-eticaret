@@ -44,7 +44,7 @@ export function HomeNewsletter() {
   }
 
   return (
-    <section className="py-10 md:py-14">
+    <section className="py-6 md:py-8">
       <div className="overflow-hidden rounded-2xl border border-brand-border bg-brand-navy px-6 py-10 text-center text-white md:px-12 md:py-14">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold-soft">
           Bülten

@@ -256,18 +256,25 @@ export function HomeFooter({ categoryLinks = EMPTY_CATEGORY_LINKS }: { categoryL
                 alt="Kabul edilen ödeme yöntemleri"
                 width={420}
                 height={48}
-                className="h-[14px] w-auto max-w-[110px] object-contain brightness-0 invert opacity-70 sm:h-4 sm:max-w-[130px]"
+                className="h-5 w-auto max-w-[140px] object-contain brightness-0 invert opacity-80 sm:h-6 sm:max-w-[165px]"
               />
               <Image
                 src="/odemekanal2.png"
                 alt="Visa ve Mastercard"
                 width={280}
                 height={48}
-                className="h-[14px] w-auto max-w-[52px] object-contain opacity-90 sm:h-4 sm:max-w-[60px]"
+                className="h-5 w-auto max-w-[68px] object-contain opacity-95 sm:h-6 sm:max-w-[78px]"
               />
             </div>
 
             <div className="order-3 flex items-center justify-center gap-3 md:justify-end">
+              <Image
+                src="/klogo.png"
+                alt="Kürkaya Medya"
+                width={160}
+                height={48}
+                className="h-10 w-auto shrink-0 object-contain sm:h-11"
+              />
               <button
                 type="button"
                 onClick={scrollTop}

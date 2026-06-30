@@ -2,7 +2,6 @@ import type { Metadata } from "next"
 import { HomeFooter } from "@/components/home/HomeFooter"
 import { HomeHeader } from "@/components/home/HomeHeader"
 import { HomeProductsSection } from "@/components/home/HomeProductsSection"
-import { WholesaleBanner } from "@/components/home/WholesaleBanner"
 import { HomeFaqSection } from "@/components/home/HomeFaqSection"
 import { HeroSection } from "@/components/home/HeroSection"
 import { PopularCategories } from "@/components/home/PopularCategories"
@@ -171,7 +170,7 @@ export default async function HomePage() {
     <>
       <HomeHeader />
       <main className="mx-auto w-full max-w-[1440px] flex-1 px-4 md:px-6 lg:px-8">
-        <div className="py-4 md:py-6">
+        <div className="py-3 md:py-4">
           <HeroSection slides={heroSlides} />
         </div>
 
@@ -192,8 +191,6 @@ export default async function HomePage() {
           products={bestSelling}
           viewAllHref="/search?sort=popular"
         />
-
-        <WholesaleBanner />
 
         <HomeProductsSection title="İndirimde" products={discountedProducts} viewAllHref="/search?indirim=true" />
 

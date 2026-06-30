@@ -23,8 +23,8 @@ export const BRAND_SITE_URL =
 export const BRAND_SUPPORT_EMAIL =
   process.env.BRAND_SUPPORT_EMAIL ?? "destek@ydytrend.com"
 
-export const BRAND_PHONE = process.env.BRAND_PHONE ?? "+90 538 884 37 62"
-export const BRAND_WHATSAPP = process.env.BRAND_WHATSAPP ?? "905388843762"
+export const BRAND_PHONE = process.env.BRAND_PHONE ?? "+90 541 450 78 85"
+export const BRAND_WHATSAPP = process.env.BRAND_WHATSAPP ?? "905414507885"
 
 // Sosyal medya
 export const BRAND_INSTAGRAM = "https://instagram.com/ydytrend"

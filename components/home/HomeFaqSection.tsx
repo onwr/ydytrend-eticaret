@@ -16,7 +16,7 @@ export function HomeFaqSection({ items }: { items: FaqItem[] }) {
   if (items.length === 0) return null
 
   return (
-    <section className="my-8 max-w-4xl mx-auto py-4">
+    <section className="my-4 max-w-4xl mx-auto py-2">
       <div className="mb-8 text-center md:mb-10">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-brand-navy text-white rounded-full text-[10px] font-bold uppercase tracking-wider mb-4">
            <FaQuestionCircle aria-hidden /> Yardım Merkezi
