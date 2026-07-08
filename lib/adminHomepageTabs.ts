@@ -6,6 +6,7 @@ export const HOME_TAB_KEYS = [
   "categories",
   "products",
   "sections",
+  "layout",
 ] as const
 
 export type HomeTabKey = (typeof HOME_TAB_KEYS)[number]
@@ -16,6 +17,7 @@ export const HOME_TAB_LABELS: Record<HomeTabKey, string> = {
   categories: "Vitrin kategorileri",
   products: "Ürün vitrini",
   sections: "Ürün bölümleri",
+  layout: "Bileşen Düzeni",
 }
 
 export const DEFAULT_HOME_TAB: HomeTabKey = "sliders"

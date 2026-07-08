@@ -44,6 +44,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProductDetailPage({ params }: Props) {
   const { slug } = await params
+  // attributeValues migration henüz uygulanmadıysa include olmadan dene
   const product = await prisma.product.findUnique({
     where: { slug, isActive: true },
     include: {
@@ -62,7 +63,17 @@ export default async function ProductDetailPage({ params }: Props) {
         },
       },
     },
-  })
+  }).catch(() =>
+    prisma.product.findUnique({
+      where: { slug, isActive: true },
+      include: {
+        category: true,
+        categories: { select: { category: { select: { id: true, name: true, slug: true } } } },
+        images: { orderBy: { sortOrder: "asc" } },
+        variants: { where: { isActive: true } },
+      },
+    })
+  )
 
   if (!product) {
     notFound()

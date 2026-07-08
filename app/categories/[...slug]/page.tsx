@@ -190,12 +190,13 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         : sort === "bestseller"
           ? [{ isFeatured: "desc" }, { updatedAt: "desc" }]
           : sort === "discount"
-            ? [{ discountPercentage: "desc" }, { createdAt: "desc" }]
+            ? [{ compareAtPrice: "desc" }, { createdAt: "desc" }]
             : sort === "newest"
               ? [{ createdAt: "desc" }]
               : [{ isFeatured: "desc" }, { createdAt: "desc" }]
 
   // Kategoriye ait filtrelenebilir attribute'ları çek
+  // CategoryAttribute tablosu migration gerektirdiğinden tablo yoksa boş dizi döner
   const filterableAttributes = await prisma.categoryAttribute.findMany({
     where: { categoryId: category.id, isFilterable: true },
     include: {
@@ -210,7 +211,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       },
     },
     orderBy: { sortOrder: "asc" },
-  })
+  }).catch(() => [])
 
   const [dbProducts, total] = await Promise.all([
     prisma.product.findMany({

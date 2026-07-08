@@ -24,7 +24,7 @@ export type SiteBranding = {
   ogImageUrl: string
 }
 
-const FALLBACK: SiteBranding = {
+export const FALLBACK_BRANDING: SiteBranding = {
   titleDefault: BRAND_SEO_TITLE,
   titleTemplate: BRAND_SEO_TITLE_TEMPLATE,
   metaDescription: BRAND_SEO_DESCRIPTION,
@@ -62,19 +62,19 @@ export async function getSiteBrandingSettings(
   })
   const map = new Map(rows.map((r) => [r.key, r.value]))
 
-  const titleDefault = pick(map, SITE_TITLE_DEFAULT_KEY, FALLBACK.titleDefault)
-  let titleTemplate = pick(map, SITE_TITLE_TEMPLATE_KEY, FALLBACK.titleTemplate)
+  const titleDefault = pick(map, SITE_TITLE_DEFAULT_KEY, FALLBACK_BRANDING.titleDefault)
+  let titleTemplate = pick(map, SITE_TITLE_TEMPLATE_KEY, FALLBACK_BRANDING.titleTemplate)
   if (!titleTemplate.includes("%s")) {
-    titleTemplate = FALLBACK.titleTemplate
+    titleTemplate = FALLBACK_BRANDING.titleTemplate
   }
 
-  const metaDescription = pick(map, SITE_META_DESCRIPTION_KEY, FALLBACK.metaDescription)
-  const metaKeywordsRaw = pick(map, SITE_META_KEYWORDS_KEY, FALLBACK.metaKeywordsRaw)
+  const metaDescription = pick(map, SITE_META_DESCRIPTION_KEY, FALLBACK_BRANDING.metaDescription)
+  const metaKeywordsRaw = pick(map, SITE_META_KEYWORDS_KEY, FALLBACK_BRANDING.metaKeywordsRaw)
   let ogSiteName = pick(map, SITE_OG_SITE_NAME_KEY, "")
   if (!ogSiteName) ogSiteName = titleDefault
 
-  const faviconUrl = pick(map, SITE_FAVICON_URL_KEY, FALLBACK.faviconUrl, { path: true })
-  const ogImageUrl = pick(map, SITE_OG_IMAGE_URL_KEY, FALLBACK.ogImageUrl, { path: true })
+  const faviconUrl = pick(map, SITE_FAVICON_URL_KEY, FALLBACK_BRANDING.faviconUrl, { path: true })
+  const ogImageUrl = pick(map, SITE_OG_IMAGE_URL_KEY, FALLBACK_BRANDING.ogImageUrl, { path: true })
 
   return {
     titleDefault,

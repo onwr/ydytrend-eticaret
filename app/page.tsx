@@ -1,3 +1,4 @@
+import React from "react"
 import type { Metadata } from "next"
 import { HomeFooter } from "@/components/home/HomeFooter"
 import { HomeHeader } from "@/components/home/HomeHeader"
@@ -16,6 +17,7 @@ import {
 } from "@/lib/homepageCategories"
 import { prisma } from "@/lib/prisma"
 import { BRAND_NAME, BRAND_SEO_DESCRIPTION } from "@/lib/brand"
+import { parseComponentOrder } from "@/lib/homepageLayout"
 
 export const dynamic = "force-dynamic"
 
@@ -64,6 +66,7 @@ export default async function HomePage() {
     featuredDb,
     faqsDb,
     homeSectionsDb,
+    layoutSetting,
   ] = await Promise.all([
     prisma.slider.findMany({ where: { isActive: true }, orderBy: { sortOrder: "asc" } }),
     getPopularHomeCategories(prisma),
@@ -102,6 +105,7 @@ export default async function HomePage() {
       orderBy: { sortOrder: "asc" },
       include: { category: true },
     }),
+    prisma.setting.findUnique({ where: { key: "HOMEPAGE_COMPONENT_ORDER" } }),
   ])
 
   const heroSlides = slidersDb.map((s) => normalizeHeroSlide(s))
@@ -166,42 +170,53 @@ export default async function HomePage() {
     })
   )
 
-  return (
-    <>
-      <HomeHeader />
-      <main className="mx-auto w-full max-w-[1440px] flex-1 px-4 md:px-6 lg:px-8">
-        <div className="py-3 md:py-4">
-          <HeroSection slides={heroSlides} />
-        </div>
+  const componentOrder = parseComponentOrder(layoutSetting?.value ?? null)
 
-        <TrustFeatures />
-
-        <PopularCategories categories={popularCategories} />
-
-        <HomeProductsSection
-          title="Yeni Gelenler"
-          subtitle="Sezonun en yeni parçaları"
-          products={newProducts}
-          viewAllHref="/search?sort=newest"
-        />
-
-        <HomeProductsSection
-          title="Çok Satanlar"
-          subtitle="En çok tercih edilen ürünler"
-          products={bestSelling}
-          viewAllHref="/search?sort=popular"
-        />
-
-        <HomeProductsSection title="İndirimde" products={discountedProducts} viewAllHref="/search?indirim=true" />
-
-        {featuredProducts.length > 0 && (
-          <HomeProductsSection
-            title="Sezon Koleksiyonu"
-            subtitle="Öne çıkan seçkiler"
-            products={featuredProducts}
-          />
-        )}
-
+  // Bileşen render haritası
+  const componentMap: Record<string, React.ReactNode> = {
+    hero: (
+      <div key="hero" className="py-3 md:py-4">
+        <HeroSection slides={heroSlides} />
+      </div>
+    ),
+    trust: <TrustFeatures key="trust" />,
+    popular_categories: <PopularCategories key="popular_categories" categories={popularCategories} />,
+    new_arrivals: (
+      <HomeProductsSection
+        key="new_arrivals"
+        title="Yeni Gelenler"
+        subtitle="Sezonun en yeni parçaları"
+        products={newProducts}
+        viewAllHref="/search?sort=newest"
+      />
+    ),
+    bestsellers: (
+      <HomeProductsSection
+        key="bestsellers"
+        title="Çok Satanlar"
+        subtitle="En çok tercih edilen ürünler"
+        products={bestSelling}
+        viewAllHref="/search?sort=popular"
+      />
+    ),
+    discounted: (
+      <HomeProductsSection
+        key="discounted"
+        title="İndirimde"
+        products={discountedProducts}
+        viewAllHref="/search?indirim=true"
+      />
+    ),
+    featured: featuredProducts.length > 0 ? (
+      <HomeProductsSection
+        key="featured"
+        title="Sezon Koleksiyonu"
+        subtitle="Öne çıkan seçkiler"
+        products={featuredProducts}
+      />
+    ) : null,
+    custom_sections: (
+      <React.Fragment key="custom_sections">
         {homeSections.map((section) => (
           <HomeProductsSection
             key={section.id}
@@ -210,12 +225,20 @@ export default async function HomePage() {
             products={section.products}
           />
         ))}
+      </React.Fragment>
+    ),
+    instagram: <HomeInstagramSection key="instagram" />,
+    newsletter: <HomeNewsletter key="newsletter" />,
+    faq: <HomeFaqSection key="faq" items={faqs} />,
+  }
 
-        <HomeInstagramSection />
-
-        <HomeNewsletter />
-
-        <HomeFaqSection items={faqs} />
+  return (
+    <>
+      <HomeHeader />
+      <main className="mx-auto w-full max-w-[1440px] flex-1 px-4 md:px-6 lg:px-8">
+        {componentOrder
+          .filter((item) => item.enabled)
+          .map((item) => componentMap[item.key] ?? null)}
       </main>
       <HomeFooter categoryLinks={footerCategories} />
     </>

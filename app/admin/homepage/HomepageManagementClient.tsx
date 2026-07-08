@@ -1,7 +1,15 @@
 "use client"
 
 import { useState, useEffect, useMemo, useCallback, startTransition } from "react"
+import { Reorder, useDragControls } from "framer-motion"
 import { useRouter, useSearchParams } from "next/navigation"
+import {
+  DEFAULT_COMPONENT_ORDER,
+  parseComponentOrder,
+  HOMEPAGE_COMPONENT_LABELS,
+  HOMEPAGE_COMPONENT_ICONS,
+  type HomepageComponentItem,
+} from "@/lib/homepageLayout"
 import { 
   HOME_TAB_KEYS,
   HOME_TAB_LABELS,
@@ -163,6 +171,11 @@ export function HomepageManagementClient() {
   const [isSaving, setIsSaving] = useState(false)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
 
+  // ── Bileşen düzeni state ──
+  const [componentOrder, setComponentOrder] = useState<HomepageComponentItem[]>(DEFAULT_COMPONENT_ORDER)
+  const [layoutSaving, setLayoutSaving] = useState(false)
+  const [layoutDirty, setLayoutDirty] = useState(false)
+
   const [sectionPickerOpen, setSectionPickerOpen] = useState(false)
   const [sectionPickerSearch, setSectionPickerSearch] = useState("")
   const [sectionPickerDebounced, setSectionPickerDebounced] = useState("")
@@ -257,10 +270,14 @@ export function HomepageManagementClient() {
         const res = await fetch("/api/admin/homepage/sections")
         const data = await res.json()
         setSections(Array.isArray(data) ? data : [])
-        // Kategorileri de çek (seçim için)
         const catRes = await fetch("/api/admin/homepage/categories")
         const catData = await catRes.json()
         setCategories(Array.isArray(catData) ? catData : [])
+      } else if (activeTab === "layout") {
+        const res = await fetch("/api/admin/homepage/layout")
+        const data = await res.json() as { order?: HomepageComponentItem[] }
+        setComponentOrder(parseComponentOrder(data.order ? JSON.stringify(data.order) : null))
+        setLayoutDirty(false)
       }
     } catch (error) {
       console.error("Fetch error:", error)
@@ -444,6 +461,28 @@ export function HomepageManagementClient() {
       setToast({ msg: "Bağlantı hatası.", ok: false })
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const saveLayout = async () => {
+    setLayoutSaving(true)
+    try {
+      const res = await fetch("/api/admin/homepage/layout", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order: componentOrder }),
+      })
+      if (res.ok) {
+        setLayoutDirty(false)
+        setToast({ msg: "Bileşen düzeni kaydedildi.", ok: true })
+        setTimeout(() => setToast(null), 3000)
+      } else {
+        setToast({ msg: "Kaydedilemedi.", ok: false })
+      }
+    } catch {
+      setToast({ msg: "Hata oluştu.", ok: false })
+    } finally {
+      setLayoutSaving(false)
     }
   }
 
@@ -826,6 +865,59 @@ export function HomepageManagementClient() {
                 <p className="font-bold text-[13px]">Henüz ürün bölümü eklenmemiş.</p>
               </div>
             )}
+          </div>
+        ) : activeTab === "layout" ? (
+          /* ── Bileşen Düzeni ─────────────────────────────────────────────── */
+          <div className="max-w-lg mx-auto space-y-4">
+            <div className="rounded-2xl border border-blue-100 bg-blue-50 px-5 py-4 flex items-start gap-3">
+              <span className="text-xl mt-0.5">💡</span>
+              <p className="text-[12.5px] text-blue-800 font-medium leading-relaxed">
+                Bileşenleri sürükleyerek yeniden sıralayın. Gözü kapalı simgesiyle gizleyebilirsiniz.
+                Değişiklikler &ldquo;Kaydet&rdquo; butonuna bastıktan sonra anasayfaya yansır.
+              </p>
+            </div>
+
+            <Reorder.Group
+              axis="y"
+              values={componentOrder}
+              onReorder={(newOrder) => {
+                setComponentOrder(newOrder)
+                setLayoutDirty(true)
+              }}
+              className="space-y-2"
+            >
+              {componentOrder.map((item) => (
+                <LayoutComponentRow
+                  key={item.key}
+                  item={item}
+                  onChange={(updated) => {
+                    setComponentOrder((prev) => prev.map((i) => (i.key === updated.key ? updated : i)))
+                    setLayoutDirty(true)
+                  }}
+                />
+              ))}
+            </Reorder.Group>
+
+            <div className="flex items-center justify-between pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setComponentOrder(DEFAULT_COMPONENT_ORDER)
+                  setLayoutDirty(true)
+                }}
+                className="text-[11px] font-bold text-zinc-400 hover:text-zinc-700 transition-colors"
+              >
+                Varsayılana sıfırla
+              </button>
+              <button
+                type="button"
+                disabled={!layoutDirty || layoutSaving}
+                onClick={saveLayout}
+                className="flex items-center gap-2 rounded-xl bg-zinc-900 px-5 py-2.5 text-[12px] font-black text-white transition-all hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {layoutSaving ? "Kaydediliyor…" : "Kaydet"}
+              </button>
+            </div>
           </div>
         ) : (
           <div className="space-y-6">
@@ -1553,5 +1645,55 @@ export function HomepageManagementClient() {
         )}
       </AnimatePresence>
     </div>
+  )
+}
+
+// ── Drag satırı bileşeni ──────────────────────────────────────────────────────
+function LayoutComponentRow({
+  item,
+  onChange,
+}: {
+  item: HomepageComponentItem
+  onChange: (updated: HomepageComponentItem) => void
+}) {
+  const controls = useDragControls()
+
+  return (
+    <Reorder.Item
+      value={item}
+      dragListener={false}
+      dragControls={controls}
+      className={`flex items-center gap-3 rounded-2xl border bg-white px-4 py-3 shadow-sm transition-all select-none ${
+        item.enabled ? "border-zinc-100" : "border-dashed border-zinc-200 opacity-50"
+      }`}
+    >
+      {/* Tutamaç */}
+      <span
+        onPointerDown={(e) => controls.start(e)}
+        className="cursor-grab active:cursor-grabbing touch-none text-zinc-300 hover:text-zinc-500 transition-colors text-lg"
+      >
+        ⠿
+      </span>
+
+      {/* İkon + Etiket */}
+      <span className="text-xl w-7 text-center">{HOMEPAGE_COMPONENT_ICONS[item.key]}</span>
+      <span className={`flex-1 text-[13px] font-bold ${item.enabled ? "text-zinc-800" : "text-zinc-400"}`}>
+        {HOMEPAGE_COMPONENT_LABELS[item.key]}
+      </span>
+
+      {/* Etkin/Pasif toggle */}
+      <button
+        type="button"
+        onClick={() => onChange({ ...item, enabled: !item.enabled })}
+        title={item.enabled ? "Gizle" : "Göster"}
+        className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all text-sm ${
+          item.enabled
+            ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+            : "bg-zinc-100 text-zinc-400 hover:bg-zinc-200"
+        }`}
+      >
+        {item.enabled ? "👁" : "🙈"}
+      </button>
+    </Reorder.Item>
   )
 }

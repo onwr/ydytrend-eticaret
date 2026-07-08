@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { DM_Sans, Playfair_Display } from "next/font/google"
 import "./globals.css"
 import { prisma } from "@/lib/prisma"
-import { getSiteBrandingSettings, siteKeywordsToArray } from "@/lib/siteSettings"
+import { getSiteBrandingSettings, siteKeywordsToArray, FALLBACK_BRANDING } from "@/lib/siteSettings"
 import { BRAND_SITE_URL } from "@/lib/brand"
 import { isIndexingAllowed } from "@/lib/indexing"
 import { publicPageRobots } from "@/lib/seo"
@@ -29,7 +29,7 @@ const playfair = Playfair_Display({
 export const revalidate = 60
 
 export async function generateMetadata(): Promise<Metadata> {
-  const branding = await getSiteBrandingSettings(prisma)
+  const branding = await getSiteBrandingSettings(prisma).catch(() => FALLBACK_BRANDING)
   const keywords = siteKeywordsToArray(branding.metaKeywordsRaw)
 
   return {

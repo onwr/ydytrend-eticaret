@@ -52,6 +52,7 @@ const HOME_SIDEBAR_TAB_ICONS: Record<HomeTabKey, React.ReactNode> = {
   categories: <FaTags />,
   products: <FaTshirt />,
   sections: <FaShoppingBag />,
+  layout: <FaLayerGroup />,
 }
 
 const NAV_SECTIONS_MAIN: { title: string; items: NavItem[] }[] = [
