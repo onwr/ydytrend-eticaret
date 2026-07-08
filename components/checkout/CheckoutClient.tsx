@@ -245,23 +245,44 @@ export default function CheckoutClient() {
 
   if (!cart) return <div className="p-20 text-center">Yükleniyor...</div>
 
-  // PayTR iframe göster
+  // PayTR tam ekran modal
   if (paytrToken) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-10">
-        <h2 className="mb-6 text-center text-xl font-black uppercase italic text-zinc-800">Ödeme</h2>
-        <div className="overflow-hidden rounded-2xl border border-zinc-200 shadow-lg">
+      <div className="fixed inset-0 z-[9999] flex flex-col bg-white">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-black uppercase tracking-wider text-zinc-800">Güvenli Ödeme</span>
+            <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">🔒 SSL</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPaytrToken(null)}
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:text-zinc-800 transition"
+            aria-label="Kapat"
+          >
+            <FaTimes className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        {/* iframe */}
+        <div className="flex-1 overflow-hidden">
           <iframe
             src={`https://www.paytr.com/odeme/guvenli/${paytrToken}`}
             id="paytriframe"
             frameBorder="0"
             scrolling="no"
-            style={{ width: "100%", height: "600px" }}
+            style={{ width: "100%", height: "100%" }}
+            allow="payment"
           />
         </div>
-        <p className="mt-4 text-center text-xs text-zinc-400">
-          Güvenli ödeme altyapısı PayTR tarafından sağlanmaktadır.
-        </p>
+
+        {/* Footer */}
+        <div className="border-t border-zinc-100 px-4 py-2 text-center shrink-0">
+          <p className="text-[10px] text-zinc-400">
+            Ödeme güvenliği PayTR tarafından sağlanmaktadır · SSL ile şifrelenmiştir
+          </p>
+        </div>
       </div>
     )
   }

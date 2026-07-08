@@ -33,6 +33,7 @@ export function buildSecurityHeaders(isProduction: boolean): Record<string, stri
     `img-src ${imgSrc.join(" ")}`,
     `connect-src ${connectSrc.join(" ")}`,
     "font-src 'self' data: https:",
+    "frame-src 'self' https://www.paytr.com",
     "frame-ancestors 'self'",
     "base-uri 'self'",
     "form-action 'self'",
