@@ -23,9 +23,14 @@ export default function OrderDetailPage({
     fetch(`/api/orders/${orderNo}`)
       .then(r => r.json())
       .then(d => {
-        setOrder(d)
+        if (d.message) {
+          setOrder({ message: d.message } as unknown as PublicOrder)
+        } else {
+          setOrder(d.order ?? d)
+        }
         setLoading(false)
       })
+      .catch(() => setLoading(false))
   }, [orderNo])
 
   if (loading) return (
