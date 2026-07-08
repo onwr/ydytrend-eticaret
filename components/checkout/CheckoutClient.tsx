@@ -3,8 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useRouter } from "next/navigation"
-import { FaUser, FaTruck, FaUniversity, FaCheck, FaChevronRight, FaChevronLeft, FaTicketAlt, FaTimes } from "react-icons/fa"
-import Image from "next/image"
+import { FaUser, FaTruck, FaCreditCard, FaCheck, FaChevronRight, FaChevronLeft, FaTicketAlt, FaTimes, FaUniversity } from "react-icons/fa"
 import { formatCurrency } from "@/lib/cart"
 import type { TurkeyLocation } from "@/lib/turkiyeLocations"
 import type { ActiveCoupon, CheckoutCart, SavedAddress, SelectOption } from "@/types/checkout"
@@ -16,7 +15,7 @@ import { BankTransferInfo } from "@/components/checkout/BankTransferInfo"
 const steps = [
   { id: 1, title: "İletişim", icon: <FaUser /> },
   { id: 2, title: "Adres", icon: <FaTruck /> },
-  { id: 3, title: "Ödeme", icon: <FaUniversity /> }
+  { id: 3, title: "Ödeme", icon: <FaCreditCard /> }
 ]
 
 export default function CheckoutClient() {
@@ -29,6 +28,9 @@ export default function CheckoutClient() {
   const [districts, setDistricts] = useState<TurkeyLocation[]>([])
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([])
   const [storeSettings, setStoreSettings] = useState({ threshold: 750, cost: 49.9 })
+
+  const [paymentMethod, setPaymentMethod] = useState<"CARD" | "BANK_TRANSFER">("CARD")
+  const [paytrToken, setPaytrToken] = useState<string | null>(null)
 
   // Coupon States
   const [couponCode, setCouponCode] = useState("")
@@ -188,34 +190,53 @@ export default function CheckoutClient() {
   const handleFinalSubmit = async () => {
     setLoading(true)
     try {
+      const orderBody = {
+        guestEmail: form.email,
+        guestPhone: form.phone,
+        shippingFullName: form.fullName,
+        shippingPhone: form.phone,
+        shippingLine1: form.address,
+        shippingDistrict: form.district,
+        shippingCity: form.city,
+        shippingPostalCode: form.postalCode || "34000",
+        shippingCountry: "TR",
+        billingSameAsShipping: true,
+        paymentMethod,
+        note: form.note,
+        couponCode: activeCoupon?.code,
+      }
+
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          guestEmail: form.email,
-          guestPhone: form.phone,
-          shippingFullName: form.fullName,
-          shippingPhone: form.phone,
-          shippingLine1: form.address,
-          shippingDistrict: form.district,
-          shippingCity: form.city,
-          shippingPostalCode: form.postalCode || "34000",
-          shippingCountry: "TR",
-          billingSameAsShipping: true,
-          paymentMethod: "BANK_TRANSFER",
-          note: form.note,
-          couponCode: activeCoupon?.code
-        })
+        body: JSON.stringify(orderBody),
       })
       const json = await res.json()
-      if (res.ok) {
-        dispatchCartUpdated()
-        router.push(`/checkout/havale?orderNo=${encodeURIComponent(json.orderNo)}`)
-      } else {
-        const errorMsg = json.debug ? `${json.message} (${json.debug})` : (json.message || "Bir hata oluştu")
-        alert(errorMsg)
+      if (!res.ok) {
+        alert(json.debug ? `${json.message} (${json.debug})` : (json.message || "Bir hata oluştu"))
+        return
       }
-    } catch (err) {
+
+      dispatchCartUpdated()
+
+      if (paymentMethod === "BANK_TRANSFER") {
+        router.push(`/checkout/havale?orderNo=${encodeURIComponent(json.orderNo)}`)
+        return
+      }
+
+      // Kredi kartı: PayTR token al
+      const tokenRes = await fetch("/api/payment/paytr-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderNo: json.orderNo }),
+      })
+      const tokenJson = await tokenRes.json()
+      if (!tokenRes.ok) {
+        alert(tokenJson.message || "Ödeme sayfası açılamadı.")
+        return
+      }
+      setPaytrToken(tokenJson.token)
+    } catch {
       alert("Hata oluştu")
     } finally {
       setLoading(false)
@@ -223,6 +244,27 @@ export default function CheckoutClient() {
   }
 
   if (!cart) return <div className="p-20 text-center">Yükleniyor...</div>
+
+  // PayTR iframe göster
+  if (paytrToken) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-10">
+        <h2 className="mb-6 text-center text-xl font-black uppercase italic text-zinc-800">Ödeme</h2>
+        <div className="overflow-hidden rounded-2xl border border-zinc-200 shadow-lg">
+          <iframe
+            src={`https://www.paytr.com/odeme/guvenli/${paytrToken}`}
+            id="paytriframe"
+            frameBorder="0"
+            scrolling="no"
+            style={{ width: "100%", height: "600px" }}
+          />
+        </div>
+        <p className="mt-4 text-center text-xs text-zinc-400">
+          Güvenli ödeme altyapısı PayTR tarafından sağlanmaktadır.
+        </p>
+      </div>
+    )
+  }
 
   // Dinamik Fiyat Hesaplama
   const totals = calculatePriceSummary(
@@ -316,14 +358,56 @@ export default function CheckoutClient() {
 
               {currentStep === 3 && (
                 <div className="space-y-6">
-                  <div>
-                    <h2 className="text-xl font-black uppercase italic text-zinc-800">Havale / EFT</h2>
-                    <p className="mt-1 text-sm text-zinc-500">
-                      Siparişi onayladıktan sonra banka bilgileri ve dekont yükleme ekranına yönlendirileceksiniz.
-                    </p>
+                  <h2 className="text-xl font-black uppercase italic text-zinc-800">Ödeme Yöntemi</h2>
+
+                  {/* Ödeme yöntemi seçimi */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("CARD")}
+                      className={`flex flex-col items-center gap-2 rounded-2xl border-2 p-5 transition-all ${
+                        paymentMethod === "CARD"
+                          ? "border-brand-gold bg-brand-gold/5"
+                          : "border-zinc-200 hover:border-zinc-300"
+                      }`}
+                    >
+                      <FaCreditCard className={`h-6 w-6 ${paymentMethod === "CARD" ? "text-brand-gold" : "text-zinc-400"}`} />
+                      <span className={`text-xs font-black uppercase tracking-wider ${paymentMethod === "CARD" ? "text-brand-gold" : "text-zinc-500"}`}>
+                        Kredi / Banka Kartı
+                      </span>
+                      {paymentMethod === "CARD" && (
+                        <span className="text-[9px] text-zinc-400">Taksit imkânı mevcut</span>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("BANK_TRANSFER")}
+                      className={`flex flex-col items-center gap-2 rounded-2xl border-2 p-5 transition-all ${
+                        paymentMethod === "BANK_TRANSFER"
+                          ? "border-brand-gold bg-brand-gold/5"
+                          : "border-zinc-200 hover:border-zinc-300"
+                      }`}
+                    >
+                      <FaUniversity className={`h-6 w-6 ${paymentMethod === "BANK_TRANSFER" ? "text-brand-gold" : "text-zinc-400"}`} />
+                      <span className={`text-xs font-black uppercase tracking-wider ${paymentMethod === "BANK_TRANSFER" ? "text-brand-gold" : "text-zinc-500"}`}>
+                        Havale / EFT
+                      </span>
+                      {paymentMethod === "BANK_TRANSFER" && (
+                        <span className="text-[9px] text-zinc-400">Dekont yüklemeniz gerekecek</span>
+                      )}
+                    </button>
                   </div>
 
-                  <BankTransferInfo amountLabel={formatCurrency(totals.grandTotal)} />
+                  {paymentMethod === "CARD" && (
+                    <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 text-sm text-zinc-500">
+                      Siparişi onayladığınızda güvenli ödeme sayfasına yönlendirileceksiniz.
+                    </div>
+                  )}
+
+                  {paymentMethod === "BANK_TRANSFER" && (
+                    <BankTransferInfo amountLabel={formatCurrency(totals.grandTotal)} />
+                  )}
 
                   <div className="space-y-2 text-left">
                     <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
@@ -331,8 +415,8 @@ export default function CheckoutClient() {
                     </label>
                     <textarea
                       placeholder="Siparişinize dair bir notunuz var mı?"
-                      className="w-full rounded-2xl border-2 border-zinc-100 bg-white p-5 text-sm font-bold outline-none focus:border-brand-teal transition-all"
-                      rows={4}
+                      className="w-full rounded-2xl border-2 border-zinc-100 bg-white p-5 text-sm font-bold outline-none focus:border-brand-gold transition-all"
+                      rows={3}
                       value={form.note}
                       onChange={(e) => update("note", e.target.value)}
                     />

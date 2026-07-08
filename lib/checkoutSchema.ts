@@ -40,7 +40,7 @@ export const checkoutBodySchema = z
     billingCity: z.union([z.string().trim().max(120), z.literal("")]).optional(),
     billingPostalCode: z.union([z.string().trim().max(20), z.literal("")]).optional(),
     billingCountry: z.union([z.string().trim().length(2), z.literal("")]).optional(),
-    paymentMethod: z.literal("BANK_TRANSFER").default("BANK_TRANSFER"),
+    paymentMethod: z.enum(["BANK_TRANSFER", "CARD"]).default("BANK_TRANSFER"),
     note: z.union([z.string().trim().max(2000), z.literal("")]).optional(),
     couponCode: z.string().trim().optional(),
   })

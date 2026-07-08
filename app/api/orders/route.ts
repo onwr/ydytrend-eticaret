@@ -397,7 +397,8 @@ export async function POST(request: Request) {
       billingCountry: bill.country,
     }
 
-    const paymentMethod = PaymentMethod.BANK_TRANSFER
+    const paymentMethod =
+      body.paymentMethod === "CARD" ? PaymentMethod.CARD : PaymentMethod.BANK_TRANSFER
 
     const noteTrim = body.note?.trim() || null
 
