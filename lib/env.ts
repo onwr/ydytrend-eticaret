@@ -21,12 +21,6 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL zorunludur."),
   JWT_SECRET: optionalNonEmpty,
   NEXT_PUBLIC_SITE_URL: optionalUrl,
-  REDIS_URL: optionalNonEmpty,
-  REDIS_HOST: optionalNonEmpty,
-  REDIS_PORT: z
-    .string()
-    .optional()
-    .transform((v) => (v ? Number(v) : undefined)),
   TRUST_PROXY: z
     .string()
     .optional()
@@ -92,8 +86,6 @@ export type AppEnv = z.infer<typeof envSchema> & {
   isTest: boolean
   jwtSecret: string | undefined
   siteUrl: string
-  redisConfigured: boolean
-  rateLimitBackend: "redis" | "memory"
 }
 
 let cached: AppEnv | null = null
@@ -133,15 +125,6 @@ function parseEnv(): AppEnv {
     }
   }
 
-  const redisConfigured = Boolean(raw.REDIS_URL || raw.REDIS_HOST)
-  const rateLimitBackend = redisConfigured ? "redis" : "memory"
-
-  if (isProduction && !redisConfigured && !isBuildPhase) {
-    console.warn(
-      "[env] Production: REDIS_URL veya REDIS_HOST tanımlı değil — rate limit bellek içi fallback kullanacak (tek instance dışında güvenilir değil)."
-    )
-  }
-
   const siteUrl =
     raw.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
     (isProduction ? undefined : "http://localhost:3000")
@@ -157,8 +140,6 @@ function parseEnv(): AppEnv {
     isTest,
     jwtSecret: raw.JWT_SECRET,
     siteUrl: siteUrl ?? "http://localhost:3000",
-    redisConfigured,
-    rateLimitBackend,
   }
 }
 

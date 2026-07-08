@@ -1,5 +1,4 @@
 import { getEnv } from "@/lib/env"
-import { getRedisClient } from "@/lib/redis"
 import { prisma } from "@/lib/prisma"
 import { getSmtpConfigForAdmin } from "@/lib/smtpSettings"
 import { constants } from "node:fs"
@@ -19,19 +18,6 @@ async function checkDatabase(): Promise<ReadinessCheck> {
     return "ok"
   } catch {
     return "fail"
-  }
-}
-
-async function checkRedis(): Promise<ReadinessCheck> {
-  const env = getEnv()
-  if (!env.redisConfigured) return "skipped"
-  const redis = getRedisClient()
-  if (!redis) return "degraded"
-  try {
-    const pong = await redis.ping()
-    return pong === "PONG" ? "ok" : "degraded"
-  } catch {
-    return "degraded"
   }
 }
 
@@ -72,9 +58,8 @@ function checkMonitoring(): ReadinessCheck {
 }
 
 export async function runReadinessChecks(): Promise<ReadinessResult> {
-  const [database, redis, uploads, mail] = await Promise.all([
+  const [database, uploads, mail] = await Promise.all([
     checkDatabase(),
-    checkRedis(),
     checkUploads(),
     checkMail(),
   ])
@@ -83,7 +68,6 @@ export async function runReadinessChecks(): Promise<ReadinessResult> {
 
   const checks: Record<string, ReadinessCheck> = {
     database,
-    redis,
     uploads,
     mail,
     env,

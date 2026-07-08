@@ -79,8 +79,8 @@ export function HomeHeader() {
                   width={200}
                   height={72}
                   priority
-                  className="h-auto w-[140px] object-contain sm:w-[155px] md:w-[165px]"
-                  sizes="(max-width: 768px) 140px, 165px"
+                  className="h-auto w-[90px] object-contain sm:w-[115px] md:w-[155px]"
+                  sizes="(max-width: 640px) 90px, (max-width: 768px) 115px, 155px"
                 />
               </Link>
 

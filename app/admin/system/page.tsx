@@ -42,7 +42,6 @@ export default async function AdminSystemPage() {
     { label: "Health", value: "GET /api/health" },
     { label: "Readiness", value: readiness.status },
     { label: "Veritabanı", value: readiness.checks.database },
-    { label: "Redis", value: readiness.checks.redis },
     { label: "Upload / CDN", value: readiness.checks.uploads },
     { label: "E-posta yapılandırması", value: readiness.checks.mail },
     { label: "Monitoring", value: readiness.checks.monitoring },

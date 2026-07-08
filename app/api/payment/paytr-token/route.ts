@@ -6,7 +6,7 @@ import { toNumber } from "@/lib/cart"
 
 export async function POST(req: Request) {
   try {
-    const { orderNo } = await req.json() as { orderNo?: string }
+    const { orderNo } = (await req.json()) as { orderNo?: string }
     if (!orderNo) {
       return NextResponse.json({ message: "orderNo gerekli." }, { status: 400 })
     }
@@ -16,6 +16,7 @@ export async function POST(req: Request) {
       include: {
         items: true,
         payments: { orderBy: { createdAt: "desc" }, take: 1 },
+        user: { select: { email: true } },
       },
     })
 
@@ -25,25 +26,36 @@ export async function POST(req: Request) {
 
     const payment = order.payments[0]
     if (!payment || payment.method !== "CARD") {
-      return NextResponse.json({ message: "Bu sipariş kredi kartı ödemesi için değil." }, { status: 400 })
+      return NextResponse.json(
+        { message: "Bu sipariş kredi kartı ödemesi için değil." },
+        { status: 400 }
+      )
     }
 
-    const userIp = getClientIp(req)
+    // Email: misafir emaili → üye emaili → hata
+    const email = order.guestEmail?.trim() || order.user?.email?.trim() || ""
+    if (!email) {
+      return NextResponse.json({ message: "Sipariş e-posta adresi eksik." }, { status: 400 })
+    }
+
+    // IP: gerçek IP veya test fallback
+    let userIp = getClientIp(req)
+    if (!userIp || userIp === "unknown") userIp = "1.2.3.4" // PayTR test modunda kabul eder
 
     const userBasket: [string, string, number][] = order.items.map((item) => [
-      item.name,
+      item.name.substring(0, 100),
       toNumber(item.unitPrice).toFixed(2),
       item.quantity,
     ])
 
     const { token } = await getPaytrToken({
       merchantOid: order.orderNo,
-      email: order.guestEmail ?? "",
+      email,
       paymentAmount: Math.round(toNumber(order.grandTotal) * 100),
       userBasket,
       userName: order.shippingFullName,
-      userAddress: `${order.shippingLine1}, ${order.shippingDistrict}, ${order.shippingCity}`,
-      userPhone: order.shippingPhone ?? order.guestPhone ?? "",
+      userAddress: `${order.shippingLine1}, ${order.shippingDistrict}, ${order.shippingCity}`.substring(0, 255),
+      userPhone: (order.shippingPhone ?? order.guestPhone ?? "05000000000").replace(/\s/g, ""),
       userIp,
     })
 
