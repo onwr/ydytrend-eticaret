@@ -238,41 +238,23 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
   const currentAttrsStr = attrFilters.map((f) => `${f.slug}:${f.value}`).join(",")
 
-  const createFilterHref = (paramsObj: {
-    sort?: string
-    inStock?: boolean
-    onSale?: boolean
-    view?: string
-    page?: string
-    attrs?: string
-    toggleAttr?: { slug: string; value: string }
+  // URL yardımcısı — sadece Server Component içinde kullanılır (pagination, sort linkleri)
+  const buildHref = (overrides: {
+    sort?: string; inStock?: boolean; onSale?: boolean
+    view?: string; page?: string; attrs?: string
   }) => {
     const newParams = new URLSearchParams()
-    const currentSort = paramsObj.sort !== undefined ? paramsObj.sort : sort
-    const currentInStock = paramsObj.inStock !== undefined ? paramsObj.inStock : inStock
-    const currentOnSale = paramsObj.onSale !== undefined ? paramsObj.onSale : onSale
-    const currentView = paramsObj.view !== undefined ? paramsObj.view : view
-    const currentPage = paramsObj.page !== undefined ? paramsObj.page : (page > 1 ? page.toString() : undefined)
-
-    let attrsStr = paramsObj.attrs !== undefined ? paramsObj.attrs : currentAttrsStr
-    if (paramsObj.toggleAttr) {
-      const t = paramsObj.toggleAttr
-      const key = `${t.slug}:${t.value}`
-      const existing = attrsStr ? attrsStr.split(",").filter(Boolean) : []
-      if (existing.includes(key)) {
-        attrsStr = existing.filter((k) => k !== key).join(",")
-      } else {
-        attrsStr = [...existing, key].join(",")
-      }
-    }
-
-    if (currentSort !== "recommended") newParams.set("sort", currentSort)
-    if (currentInStock) newParams.set("inStock", "1")
-    if (currentOnSale) newParams.set("onSale", "1")
-    if (currentView !== "grid4") newParams.set("view", currentView)
-    if (currentPage) newParams.set("page", currentPage)
-    if (attrsStr) newParams.set("attrs", attrsStr)
-
+    const s = overrides.sort !== undefined ? overrides.sort : sort
+    const iS = overrides.inStock !== undefined ? overrides.inStock : inStock
+    const oS = overrides.onSale !== undefined ? overrides.onSale : onSale
+    const v = overrides.view !== undefined ? overrides.view : view
+    const p = overrides.page !== undefined ? overrides.page : (page > 1 ? page.toString() : undefined)
+    if (s !== "recommended") newParams.set("sort", s)
+    if (iS) newParams.set("inStock", "1")
+    if (oS) newParams.set("onSale", "1")
+    if (v !== "grid4") newParams.set("view", v)
+    if (p) newParams.set("page", p)
+    if (currentAttrsStr) newParams.set("attrs", currentAttrsStr)
     const qs = newParams.toString()
     return `/categories/${fullPath}${qs ? "?" + qs : ""}`
   }
@@ -342,11 +324,13 @@ export default async function CategoryPage({ params, searchParams }: Props) {
           }))}
           activeFilters={attrFilters}
           totalCount={total}
-          createFilterHref={createFilterHref}
+          fullPath={fullPath}
           sort={sort}
           inStock={inStock}
           onSale={onSale}
           view={view}
+          currentPage={page}
+          currentAttrsStr={currentAttrsStr}
         >
         <div className="mb-8 space-y-4">
 
@@ -365,7 +349,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
               ).map(([value, label]) => (
                 <Link
                   key={value}
-                  href={createFilterHref({ sort: value, page: "1" })}
+                  href={buildHref({ sort: value, page: "1" })}
                   className={`h-9 px-3 flex items-center rounded-full border text-xs font-medium transition whitespace-nowrap ${
                     sort === value
                       ? "bg-brand-gold border-brand-gold text-white"
@@ -378,11 +362,11 @@ export default async function CategoryPage({ params, searchParams }: Props) {
             </div>
 
             <div className="flex items-center gap-3">
-              <Link href={createFilterHref({ view: "grid2" })} title="2'li Görünüm" className="flex gap-1 p-2 group">
+              <Link href={buildHref({ view: "grid2" })} title="2'li Görünüm" className="flex gap-1 p-2 group">
                 <div className={`w-1.5 h-1.5 rounded-full transition-colors ${view === "grid2" ? "bg-brand-gold" : "bg-zinc-300 group-hover:bg-zinc-400"}`} />
                 <div className={`w-1.5 h-1.5 rounded-full transition-colors ${view === "grid2" ? "bg-brand-gold" : "bg-zinc-300 group-hover:bg-zinc-400"}`} />
               </Link>
-              <Link href={createFilterHref({ view: "grid4" })} title="4'lü Görünüm" className="flex gap-1 p-2 group">
+              <Link href={buildHref({ view: "grid4" })} title="4'lü Görünüm" className="flex gap-1 p-2 group">
                 <div className={`w-1 h-1 rounded-full transition-colors ${view === "grid4" ? "bg-brand-gold" : "bg-zinc-300 group-hover:bg-zinc-400"}`} />
                 <div className={`w-1 h-1 rounded-full transition-colors ${view === "grid4" ? "bg-brand-gold" : "bg-zinc-300 group-hover:bg-zinc-400"}`} />
                 <div className={`w-1 h-1 rounded-full transition-colors ${view === "grid4" ? "bg-brand-gold" : "bg-zinc-300 group-hover:bg-zinc-400"}`} />
@@ -401,7 +385,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
           >
             {page > 1 ? (
               <Link
-                href={createFilterHref({ page: (page - 1).toString() })}
+                href={buildHref({ page: (page - 1).toString() })}
                 className="flex h-10 min-w-10 items-center justify-center rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-600 transition hover:border-brand-gold hover:text-brand-gold"
               >
                 Önceki
@@ -423,7 +407,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
               ) : (
                 <Link
                   key={item}
-                  href={createFilterHref({ page: item.toString() })}
+                  href={buildHref({ page: item.toString() })}
                   aria-current={page === item ? "page" : undefined}
                   className={`flex h-10 w-10 items-center justify-center rounded-md border text-sm font-medium transition ${page === item ? "border-brand-gold bg-brand-gold text-white" : "border-zinc-200 bg-white text-zinc-600 hover:border-brand-gold hover:text-brand-gold"}`}
                 >
@@ -433,7 +417,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
             )}
             {page < totalPages ? (
               <Link
-                href={createFilterHref({ page: (page + 1).toString() })}
+                href={buildHref({ page: (page + 1).toString() })}
                 className="flex h-10 min-w-10 items-center justify-center rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-600 transition hover:border-brand-gold hover:text-brand-gold"
               >
                 Sonraki

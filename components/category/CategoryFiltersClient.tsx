@@ -20,7 +20,20 @@ type Props = {
   filterableAttributes: FilterAttribute[]
   activeFilters: ActiveFilter[]
   totalCount: number
-  createFilterHref: (params: {
+  /** Kategori URL yolu, örn: "taki/altin" */
+  fullPath: string
+  sort: string
+  inStock: boolean
+  onSale: boolean
+  view: string
+  currentPage: number
+  currentAttrsStr: string
+}
+
+function buildFilterHref(
+  fullPath: string,
+  current: { sort: string; inStock: boolean; onSale: boolean; view: string; page: number; attrsStr: string },
+  overrides: {
     sort?: string
     inStock?: boolean
     onSale?: boolean
@@ -28,11 +41,34 @@ type Props = {
     page?: string
     attrs?: string
     toggleAttr?: { slug: string; value: string }
-  }) => string
-  sort: string
-  inStock: boolean
-  onSale: boolean
-  view: string
+  }
+): string {
+  const newParams = new URLSearchParams()
+  const s = overrides.sort !== undefined ? overrides.sort : current.sort
+  const iS = overrides.inStock !== undefined ? overrides.inStock : current.inStock
+  const oS = overrides.onSale !== undefined ? overrides.onSale : current.onSale
+  const v = overrides.view !== undefined ? overrides.view : current.view
+  const p = overrides.page !== undefined ? overrides.page : (current.page > 1 ? current.page.toString() : undefined)
+
+  let attrsStr = overrides.attrs !== undefined ? overrides.attrs : current.attrsStr
+  if (overrides.toggleAttr) {
+    const t = overrides.toggleAttr
+    const key = `${t.slug}:${t.value}`
+    const existing = attrsStr ? attrsStr.split(",").filter(Boolean) : []
+    attrsStr = existing.includes(key)
+      ? existing.filter((k) => k !== key).join(",")
+      : [...existing, key].join(",")
+  }
+
+  if (s !== "recommended") newParams.set("sort", s)
+  if (iS) newParams.set("inStock", "1")
+  if (oS) newParams.set("onSale", "1")
+  if (v !== "grid4") newParams.set("view", v)
+  if (p) newParams.set("page", p)
+  if (attrsStr) newParams.set("attrs", attrsStr)
+
+  const qs = newParams.toString()
+  return `/categories/${fullPath}${qs ? "?" + qs : ""}`
 }
 
 export function CategoryFiltersClient({
@@ -40,10 +76,16 @@ export function CategoryFiltersClient({
   filterableAttributes,
   activeFilters,
   totalCount,
-  createFilterHref,
+  fullPath,
+  sort,
   inStock,
   onSale,
+  view,
+  currentPage,
+  currentAttrsStr,
 }: Props) {
+  const createFilterHref = (params: Parameters<typeof buildFilterHref>[2]) =>
+    buildFilterHref(fullPath, { sort, inStock, onSale, view, page: currentPage, attrsStr: currentAttrsStr }, params)
   const [mobileOpen, setMobileOpen] = useState(false)
 
   useEffect(() => {
