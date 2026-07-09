@@ -57,11 +57,11 @@ export function HomeHeader() {
 
   return (
     <>
-      <div className="sticky top-0 z-50 w-full">
+      <div className="sticky top-0 z-50 w-full overflow-visible">
         <AnnouncementBar />
 
         <header
-          className={`w-full border-b border-brand-border bg-white transition-shadow duration-300 ${
+          className={`w-full overflow-visible border-b border-brand-border bg-white transition-shadow duration-300 ${
             scrolled ? "shadow-[0_2px_20px_rgba(35,32,32,0.06)]" : ""
           }`}
         >

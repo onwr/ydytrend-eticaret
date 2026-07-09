@@ -68,7 +68,7 @@ export const HERO_DEFAULTS: Omit<
   features: [
     "Ücretsiz Kargo",
     "Güvenli Ödeme",
-    "Kolay İade",
+    "Hızlı Teslimat",
     "Yeni Sezon Ürünler",
   ],
 }

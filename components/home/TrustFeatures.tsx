@@ -1,4 +1,4 @@
-import { FaTruck, FaShieldAlt, FaUndo, FaHeadset } from "react-icons/fa"
+import { FaTruck, FaShieldAlt, FaHeadset } from "react-icons/fa"
 
 const ITEMS = [
   {
@@ -12,11 +12,6 @@ const ITEMS = [
     description: "256-bit SSL ile korunan ödeme",
   },
   {
-    icon: FaUndo,
-    title: "Kolay İade",
-    description: "14 gün içinde ücretsiz iade",
-  },
-  {
     icon: FaHeadset,
     title: "Müşteri Desteği",
     description: "Sorularınız için her zaman yanınızdayız",
@@ -26,7 +21,7 @@ const ITEMS = [
 export function TrustFeatures() {
   return (
     <section className="py-5 md:py-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {ITEMS.map(({ icon: Icon, title, description }) => (
           <div
             key={title}
