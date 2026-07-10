@@ -31,6 +31,7 @@ export type CartSummary = {
   subtotal: number
   shipping: number
   grandTotal: number
+  freeShippingThreshold: number
 }
 
 export type CartResponse = {
@@ -126,5 +127,6 @@ export function calculateCartSummary(lines: CartLine[], threshold: number = 750,
     subtotal,
     shipping,
     grandTotal: subtotal + shipping,
+    freeShippingThreshold: threshold,
   }
 }
