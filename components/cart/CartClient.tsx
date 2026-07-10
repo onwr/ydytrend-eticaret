@@ -24,6 +24,7 @@ const emptyCart: CartResponse = {
     subtotal: 0,
     shipping: 0,
     grandTotal: 0,
+    freeShippingThreshold: 750,
   },
 }
 
